@@ -5,6 +5,8 @@ from core.model import EventEyeTrackerModel
 from core.dataset import get_real_dataloaders
 from tools.train import train_model
 from core.dataset import EVEyeDataset
+# 引入新 SNN 模型
+#from core.snn_model import SpikingEyeTracker
 
 def main():
     print("=== 超高频眼动事件检测：真实数据训练开始 ===")
@@ -16,7 +18,7 @@ def main():
     
     # 基础配置
     IN_CHANNELS = 5       # 现在有5个通道：X, Y, T, P, 距离
-    CNN_OUT_CHANNELS = 16 
+    CNN_OUT_CHANNELS = 16
     LSTM_HIDDEN = 32
     NUM_CLASSES = 2       # 现在只有 0(注视) 和 1(扫视) 两类！
     BATCH_SIZE = 64
@@ -43,15 +45,16 @@ def main():
     # 5. 创建 DataLoader
     train_loader = DataLoader(train_subset, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_subset, batch_size=BATCH_SIZE, shuffle=False)
-    
+
     # 2. 初始化模型
     model = EventEyeTrackerModel(
         input_channels=IN_CHANNELS, 
         cnn_out_channels=CNN_OUT_CHANNELS, 
+        #hidden_channels=16,
         lstm_hidden=LSTM_HIDDEN, 
         num_classes=NUM_CLASSES
     )
-    
+
     # 3. 开始训练
     print("\n--- 开始模型训练 ---")
     train_model(model, train_loader, val_loader, epochs=EPOCHS, lr=0.001)

@@ -10,11 +10,29 @@ def train_model(model, train_loader, val_loader, epochs=50, lr=0.001):
     模型训练与评估的主循环
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"正在使用的计算设备: {device}")
+    print(f"使用的计算设备: {device}")
     model.to(device)
+
+    print("在扫描训练集以计算类别动态权重...")
+    all_train_labels = []
+    # 这里只扫标签，不把数据放进 GPU，速度很快
+    for _, batch_labels in train_loader:
+        all_train_labels.extend(batch_labels.numpy())
+        
+    class_counts = np.bincount(all_train_labels)
+    total_samples = len(all_train_labels)
+    num_classes = len(class_counts)
     
-    # 将权重传入交叉熵损失函数
-    criterion = nn.CrossEntropyLoss()
+    # 核心公式：总样本数 / (类别数 * 该类样本数)
+    # 样本越少的类别，计算出的权重越大
+    weights = total_samples / (num_classes * class_counts.astype(np.float32))
+    class_weights = torch.FloatTensor(weights).to(device)
+    
+    print(f"✅ 权重分配完毕 -> 注视(0): {weights[0]:.4f} | 扫视(1): {weights[1]:.4f}")
+    # ==========================================
+    
+    # 将计算好的权重传入交叉熵损失函数
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = optim.Adam(model.parameters(), lr=lr)
     
     # 记录最好的 F1 分数，用于保存模型
@@ -83,4 +101,4 @@ def train_model(model, train_loader, val_loader, epochs=50, lr=0.001):
             print(f"🌟 发现更好的模型！验证集 F1: {best_f1:.4f}，已保存至 best_event_eye_tracker.pth")
         print("-" * 50)
         
-    print("模型训练全部完成！")
+    print("模型训练全部完成！\n best_f1=", best_f1)
